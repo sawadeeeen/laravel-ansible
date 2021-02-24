@@ -22,3 +22,28 @@
 - name: install EPEL when amazon linux
   shell: amazon-linux-extras install -y epel
   when: ansible_facts['distribution'] == "Amazon" and epel_check.rc == 0
+- name: install EPEL when other linux
+  yum: 
+    name: ['epel-release', 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm']
+    when:
+    - ansible_facts['distribution'] == "CentOS"
+    - ansible_facts['distribution_major_version'] == "7"
+#必須パッケージインストール
+- name: yum basic install
+  yum:
+    name: ['zip', 'unzip', 'git', 'mysql', 'nginx', 'nodejs','git']
+    state: latest
+#グループ作成
+- name: create group
+  group:
+    name: laravel
+    state: present
+# nginxを作成したグループに参加させる
+- name: add nginx to laravel group
+  user:
+    name: "{{ item.name }}"
+    append: yes
+    groups: "{{ item.group }}"
+  with_items:
+    - {name: 'nginx', group: 'laravel'}
+    - {name: 'ec2-user', group: 'laravel'}
