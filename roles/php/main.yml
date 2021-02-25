@@ -1,0 +1,40 @@
+---
+- name: remi repository install
+  yum:
+    name: [http://rpms.famillecollet.com/enterprise/remi-release-7.rpm]
+- name: yum php install
+  yum:
+    name: ['php72', 'php-cli' ,'php-gd', 'php-mysqlnd', 'php-mbstring', 'php-mcrypt', 'php-pdo', 'php-xml', 'php-fpm','php-json','php-xmlrpc','php-pecl-zip']
+    state: latest
+    enablerepo: remi,remi-php72
+- name: modify php.ini
+  replace:
+    dest: /etc/php.ini
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  with_items:
+    - { regexp: "^;date.timezone =", replace: "date.timezone = Asia/Tokyo" }
+    - { regexp: "^expose_php = On", replace: "expose_php = Off" }
+    - { regexp: "^upload_max_filesize = .*$", replace: "upload_max_filesize = 256M" }
+    - { regexp: "^memory_limit = .*$", replace: "memory_limit = 1024M" }
+- name: modify php-fpm config file
+  replace:
+    dest: /etc/php-fpm.d/www.conf
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  with_items:
+    - { regexp: "^user = apache", replace: "user = nginx" }
+    - { regexp: "^group = apache", replace: "group = nginx" }
+    - { regexp: "^listen = 127.0.0.1:9000", replace: "listen = /var/run/php-fpm/php-fpm.sock" }
+    - { regexp: "^;listen.owner = nobody", replace: "listen.owner = nginx" }
+    - { regexp: "^;listen.group = nobody", replace: "listen.group = nginx" }
+- name: make php-fpm.conf
+  template:
+    src: php-fpm.conf.j2
+    dest: /etc/nginx/conf.d/php-fpm.conf
+- name: start php-fpm
+  systemd:
+    name: php-fpm.service
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
